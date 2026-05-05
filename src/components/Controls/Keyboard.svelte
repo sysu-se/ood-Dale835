@@ -1,4 +1,5 @@
 <script>
+	import { exploreActive, tryExploreGuess } from '../../stores/exploreSession.js';
 	import { userGrid } from '@sudoku/stores/grid';
 	import { cursor } from '@sudoku/stores/cursor';
 	import { notes } from '@sudoku/stores/notes';
@@ -21,7 +22,11 @@
 					candidates.clear($cursor);
 				}
 
-				userGrid.set($cursor, num);
+				if ($exploreActive) {
+					tryExploreGuess({ row: $cursor.y, col: $cursor.x, value: num });
+				} else {
+					userGrid.set($cursor, num);
+				}
 			}
 		}
 	}

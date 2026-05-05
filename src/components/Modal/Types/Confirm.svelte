@@ -11,7 +11,7 @@
 <h1 class="text-3xl font-semibold mb-5 leading-none">{data.title || 'Confirm'}</h1>
 
 {#if data.text}
-	<p class="text-lg mb-5">{data.text}</p>
+	<p class="text-lg mb-5 whitespace-pre-line">{data.text}</p>
 {/if}
 
 <div class="flex justify-end">
