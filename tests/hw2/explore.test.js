@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createGame, createSudoku } from '../../src/domain/index.js';
+import { createGame, createSudoku, ExplorePhase } from '../../src/domain/index.js';
 
 function emptyGrid() {
 	return Array.from({ length: 9 }, () => Array(9).fill(0));
@@ -8,9 +8,33 @@ function emptyGrid() {
 describe('HW2 explore mode (domain)', () => {
 	it('enters explore when no deduced singles and has blanks', () => {
 		const game = createGame({ sudoku: createSudoku(emptyGrid()) });
+		expect(game.getExplorePhase()).toBe(ExplorePhase.OFF);
+		expect(game.getExploreState().phase).toBe(ExplorePhase.OFF);
 		expect(game.canStartExplore().ok).toBe(true);
 		expect(game.startExplore().ok).toBe(true);
 		expect(game.isExploring()).toBe(true);
+		expect(game.getExplorePhase()).toBe(ExplorePhase.EXPLORING);
+		const st = game.getExploreState();
+		expect(st.phase).toBe(ExplorePhase.EXPLORING);
+		expect(st.depthFromAnchor).toBe(0);
+		expect(st.childBranchCount).toBe(0);
+		expect(st.siblingBranchCount).toBe(0);
+	});
+
+	it('getExploreState reflects tree depth and siblings after branching', () => {
+		const game = createGame({ sudoku: createSudoku(emptyGrid()) });
+		game.startExplore();
+		game.guess({ row: 0, col: 0, value: 1 });
+		expect(game.getExploreState().depthFromAnchor).toBe(1);
+		game.undo();
+		game.guess({ row: 0, col: 0, value: 2 });
+		let st = game.getExploreState();
+		expect(st.siblingBranchCount).toBe(2);
+		expect(st.siblingIndex).toBeGreaterThanOrEqual(0);
+		game.guess({ row: 1, col: 1, value: 3 });
+		st = game.getExploreState();
+		expect(st.depthFromAnchor).toBe(2);
+		expect(st.legalPathStepCount).toBe(2);
 	});
 
 	const SOLVED = [

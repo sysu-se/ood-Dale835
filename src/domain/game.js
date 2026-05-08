@@ -30,6 +30,16 @@ export function createGame({ sudoku }) {
 			return explore.isExploring();
 		},
 
+		/** @returns {'off' | 'exploring'} */
+		getExplorePhase() {
+			return explore.getExplorePhase();
+		},
+
+		/** 探索子会话只读快照：阶段、树深度、子/兄弟分支数、失败记忆规模等 */
+		getExploreState() {
+			return explore.getExploreState();
+		},
+
 		canStartExplore() {
 			return explore.canStartExplore();
 		},
@@ -119,6 +129,14 @@ export function createGame({ sudoku }) {
 
 		hintDeducedSingles() {
 			return current.hintDeducedSingles();
+		},
+ 
+		hintCandidatesExplainedAt(row, col) {
+			return current.hintCandidatesExplainedAt(row, col);
+		},
+
+		hintDeducedSinglesExplained() {
+			return current.hintDeducedSinglesExplained();
 		},
 	};
 }

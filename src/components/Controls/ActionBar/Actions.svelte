@@ -34,27 +34,22 @@
 		const sudoku = createSudoku(grid);
 		const row = $cursor.y;
 		const col = $cursor.x;
-		const cellVal = grid[row][col];
 
-		let cellLine;
-		if (cellVal !== 0) {
-			cellLine = `当前光标格（第 ${row + 1} 行，第 ${col + 1} 列）已有数字 ${cellVal}，候选提示仅对空格有效。`;
-		} else {
-			const cands = sudoku.hintCandidatesAt(row, col);
-			cellLine = cands.length
-				? `候选提示：第 ${row + 1} 行第 ${col + 1} 列空格仍可填：${cands.join('，')}。`
-				: `候选提示：该空格在当前盘面下无可填数字（可能存在冲突）。`;
+		const candExplained = sudoku.hintCandidatesExplainedAt(row, col);
+		let cellBlock = `【当前光标格】\n${candExplained.headline}`;
+		if (candExplained.excludedLines.length > 0) {
+			cellBlock += '\n\n【为何其它数字不可填】\n' + candExplained.excludedLines.join('\n');
 		}
 
-		const singles = sudoku.hintDeducedSingles();
-		const singlesLine =
-			singles.length === 0
-				? '下一步提示：全盘暂无「唯一候选」格（推定格）；可能需要更强推理或探索模式。'
-				: `下一步提示（唯一候选 / 推定格）：\n${singles.map((m) => `  · 第 ${m.row + 1} 行第 ${m.col + 1} 列 → ${m.value}`).join('\n')}`;
+		const deducedExplained = sudoku.hintDeducedSinglesExplained();
+		let singlesBlock = `【推定格 / 唯一候选】\n${deducedExplained.headline}`;
+		if (deducedExplained.singles.length > 0) {
+			singlesBlock += '\n\n' + deducedExplained.singles.map((s) => s.explanation).join('\n');
+		}
 
 		modal.show('confirm', {
-			title: '提示',
-			text: `${cellLine}\n\n${singlesLine}`,
+			title: '提示（含说明）',
+			text: `${cellBlock}\n\n${singlesBlock}`,
 			button: '知道了',
 			callback: () => {},
 		});

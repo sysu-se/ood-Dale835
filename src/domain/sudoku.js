@@ -39,6 +39,32 @@ export function computeCandidateDigits(grid9, row, col) {
 	return out;
 }
 
+/**
+ * 说明数字 `digit` 为何不能填入 `(row,col)`（取最先命中的约束来源）。
+ */
+export function explainWhyDigitExcluded(grid9, row, col, digit) {
+	for (let c = 0; c < SUDOKU_SIZE; c++) {
+		if (c !== col && grid9[row][c] === digit) {
+			return `第 ${row + 1} 行第 ${c + 1} 列已填 ${digit}，同行不得重复`;
+		}
+	}
+	for (let r = 0; r < SUDOKU_SIZE; r++) {
+		if (r !== row && grid9[r][col] === digit) {
+			return `第 ${r + 1} 行第 ${col + 1} 列已填 ${digit}，同列不得重复`;
+		}
+	}
+	const br = Math.floor(row / BOX_SIZE) * BOX_SIZE;
+	const bc = Math.floor(col / BOX_SIZE) * BOX_SIZE;
+	for (let r = br; r < br + BOX_SIZE; r++) {
+		for (let c = bc; c < bc + BOX_SIZE; c++) {
+			if ((r !== row || c !== col) && grid9[r][c] === digit) {
+				return `第 ${r + 1} 行第 ${c + 1} 列已填 ${digit}，同宫（3×3）不得重复`;
+			}
+		}
+	}
+	return `数字 ${digit} 与当前盘面约束冲突`;
+}
+
 function createSudokuInstance(initialGrid) {
 	const _grid = cloneGrid9(initialGrid);
 
@@ -78,6 +104,60 @@ function createSudokuInstance(initialGrid) {
 				}
 			}
 			return singles;
+		},
+
+		/**
+		 * 候选提示（含解释）：可填数字 + 为何其它 1–9 被排除。
+		 * @returns {{ candidates: number[], headline: string, excludedLines: string[] }}
+		 */
+		hintCandidatesExplainedAt(row, col) {
+			if (_grid[row][col] !== 0) {
+				return {
+					candidates: [],
+					headline: `该格已填 ${_grid[row][col]}，候选说明仅对空格有效。`,
+					excludedLines: [],
+				};
+			}
+			const candidates = computeCandidateDigits(_grid, row, col);
+			const candSet = new Set(candidates);
+			const excludedLines = [];
+			for (let d = 1; d <= SUDOKU_SIZE; d++) {
+				if (candSet.has(d)) continue;
+				excludedLines.push(`· ${d}：${explainWhyDigitExcluded(_grid, row, col, d)}`);
+			}
+			const headline =
+				candidates.length === 0
+					? `第 ${row + 1} 行第 ${col + 1} 列：经行列宫排除后无可填数字（盘面可能冲突或约束过强）。`
+					: `第 ${row + 1} 行第 ${col + 1} 列：经同行、同列、同宫内已出现数字排除后，仍可填 ${candidates.join('、')}。`;
+			return { candidates, headline, excludedLines };
+		},
+
+		/**
+		 * 推定格提示（含解释）：每个 naked single 一行理由 + 总述。
+		 * @returns {{ singles: { row: number, col: number, value: number, explanation: string }[], headline: string }}
+		 */
+		hintDeducedSinglesExplained() {
+			const singles = [];
+			for (let row = 0; row < SUDOKU_SIZE; row++) {
+				for (let col = 0; col < SUDOKU_SIZE; col++) {
+					if (_grid[row][col] !== 0) continue;
+					const candidates = computeCandidateDigits(_grid, row, col);
+					if (candidates.length === 1) {
+						const value = candidates[0];
+						singles.push({
+							row,
+							col,
+							value,
+							explanation: `第 ${row + 1} 行第 ${col + 1} 列在行列宫排除后只剩唯一候选，故可确定填 ${value}（唯一候选 / naked single）。`,
+						});
+					}
+				}
+			}
+			const headline =
+				singles.length === 0
+					? '全盘暂无「唯一候选」格：没有任何空格在排除后只剩一个数字。'
+					: `共 ${singles.length} 个「唯一候选」格（naked single），可优先填写。`;
+			return { singles, headline };
 		},
 
 		toString() {

@@ -11,7 +11,9 @@
 
 界面层：灯泡按钮从 `userGrid` 取出当前盘面，调用 `createSudoku(grid)` 再调用上述领域方法，用弹窗展示「当前光标格的候选」与「全盘唯一候选（推定格）」。提示次数仍由设置里的 `hints` store 消耗，属于交互策略；**算提示内容的逻辑全部在领域对象中**，不在组件里手写推理。
 
-自动化：`tests/hw2/hints.test.js` 覆盖候选、推定格及 `Game` 转发。
+**解释能力（加分）**：`hintCandidatesExplainedAt` 在空格上除给出可填集合外，对 **1–9 中每个被排除的数** 调用 `explainWhyDigitExcluded`，说明是**同行、同列还是同宫**中已有该数；`hintDeducedSinglesExplained` 为每个 naked single 生成一句「行列宫排除后只剩唯一候选」的说明。UI 仅拼接领域返回的 `headline` / `excludedLines` / `explanation` 字段。
+
+自动化：`tests/hw2/hints.test.js` 覆盖候选、推定格、`Game` 转发及解释字段。
 
 ---
 
@@ -28,7 +30,11 @@
 
 ## 3. 你如何实现探索模式？
 
-探索状态机放在 **`src/domain/explore.js`**（`createExploreSession`），由 **`Game`**（`src/domain/game.js`）注入 `getCurrentSudoku` / `setCurrentSudoku` 与主线 `past` / `future` 回调后组装；要点如下：
+探索状态机放在 **`src/domain/explore.js`**（`createExploreSession`），由 **`Game`**（`src/domain/game.js`）注入 `getCurrentSudoku` / `setCurrentSudoku` 与主线 `past` / `future` 回调后组装。
+
+**状态建模（加分 · 显式阶段 + 聚合模型）**：用 **`ExplorePhase`**（`src/domain/exploreState.js`）区分 **`off` / `exploring`**，与布尔 `isExploring()` 一致。探索激活时，所有可变子状态收敛为单一 **`ExploreModel`**（`savedMainJSON`、`anchorGrid`、`failedBoardSignatures`、`redoFrames`、树根与当前指针、`pathSignatures`），`model === null` 即表示未探索，避免多变量不同步。只读视图由 **`describeExploreModel`** 生成；**`Game.getExplorePhase()`** / **`getExploreState()`** 供 UI 或测试观察子会话，不泄露内部引用。
+
+要点如下：
 
 1. **进入探索**：`canStartExplore()` / `startExplore()`。仅当 `hintDeducedSingles()` 为空（全盘无「唯一候选」）且仍有空格时允许进入。进入时用 `savedMainJSON` 保存进入前主线局面，`exploreAnchorGrid` 保存探索锚点（与进入时盘面一致），`current` 切换为 `createSudokuFromJSON` 的**盘面副本**，在副本上 `guess`。
 2. **冲突**：`guess` 在父节点盘面上试填；若 `failedBoardSignatures` 已含该终盘则 `KNOWN_FAILED`；若试填后非法则记入失败记忆并 **`CONFLICT`（不创建树节点，当前指针停在父节点）**。
@@ -91,6 +97,8 @@
 |----|------|
 | 树状探索分支 | `explore.js` 中父子节点树 + 「切分支」UI |
 | 探索内独立 Undo/Redo | `exploreRedoFrames` + 沿父指针撤销 |
+| 提示具有解释能力 | `hintCandidatesExplainedAt`（逐个数说明被行列宫哪条约束排除）、`hintDeducedSinglesExplained`（每个 naked single 一句理由）；`explainWhyDigitExcluded` 为纯函数便于测试 |
+| 探索状态建模 | `ExplorePhase` + `ExploreModel` + `getExploreState()` |
 | 较完整测试 | `tests/hw2/hints.test.js`、`tests/hw2/explore.test.js`；HW1 仍由 `tests/hw1/*` 覆盖 |
 
 ---
